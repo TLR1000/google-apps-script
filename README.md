@@ -3,7 +3,7 @@ some google apps scripts
 
 Scripts for Google Apps
 
-This repo is where I'll keep some scripts that are useful to me, and hopefully others can benefit from them too.
+This repo is where I'll keep some scripts and a number of them are used for the construction of twitter troll messages regarding controversial subjects. Make waves! The main purpose of them is to understand how things work, and that is the reason for their existence.
 
 How to Use Google Scripts
 
