@@ -7,7 +7,7 @@
 
 /*
 Zie voor fleet documentatie:
-https://docs.google.com/spreadsheets/d/1s0mrpmhwVQmJhldCQlgzWHLUn78wnGq-KdVcYaWo4h8/edit?usp=sharing
+https://docs.google.com/spreadsheets/d/xx/edit?usp=sharing
 
 Aantallen migranten
 http://data2.unhcr.org/en/situations/mediterranean
