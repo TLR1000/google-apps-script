@@ -1,0 +1,210 @@
+//Scriptje dat GroupMe messages post over aanvallen op portals 
+//waar deze gebruiker een reso of mod op heeft staan.
+//
+//Benodigdheden:
+//Gmail account    (filters & dit script configureren)
+//Ingress account  (reso's & mods deployen)
+//Outgress account (attack alerts configureren)
+//Groupme account  (bot configureren)
+//
+//Werking:
+//Ingress stuurt attack alerts naar een gmail box.
+//Een gmail filter stuurt deze alerts door naar Outgress.
+//In Outgress is een Attack Alert gedefinieerd (oa. geofenced, user-specifiek).
+//De Outgress alerts worden naar dit mailaccount teruggestuurd
+//Ontvangen Outgress alerts worden van een label voorzien
+//Dit script verwerkt de subjects van die mails tot een GroupMe message
+//In GroupMe is hiervoor een Bot gedefinieerd.
+//Het Bot_id is oa. bepalend voor de group waarin gepost wordt.
+//
+//De messages worden in google sheet geschreven met expiration tijdstip
+//dit om te voorkomen dat hij steeds dezelfde message gaat sturen.
+//
+//********** PARAMETER SECTION **********
+//
+//GroupMe channel
+var botID = 'xx';   //GroupMe Channel
+//
+//aantal minuten waarna een boodschap expired. dwz na hoeveel minuten mag hij weer dezelfde boodschap sturen?
+var minExp = 10;  
+//
+
+
+function processIncoming() {
+
+  //opschonen expired messages
+  cleanUpStamps ();
+  
+  Logger.log('processIncoming started.');
+  var now = new Date();
+  //post2Groupme ('processIncoming started at ' + now);
+  
+  //main functie
+  //alleen mails met 'GroupMeBot' label processen.
+  //kunnen we later makkelijker uitbreiden
+  var labels = GmailApp.getUserLabels();
+  var intDelay = 0;
+  for (var i = 0; i < labels.length; i++) {
+   
+    if ((labels[i].getName() == "GroupMeBot")) 
+    {
+      //nu alle mailthreads met deze labels verwerken       
+      processThreads(labels[i].getName());
+      Logger.log('calling processThreads with parm:'+ labels[i].getName());
+    }
+    //reset
+  }
+  Logger.log('processIncoming done.');
+};//end function
+
+
+
+function processThreads(strLabel) {
+  Logger.log('processThreads: invoked wit parm:' +strLabel);
+  
+  var label = GmailApp.getUserLabelByName(strLabel);
+  var threads = label.getThreads(0, 10);  //niet meer dan 10, anders is het annoying
+  for (var i = 0; i < threads.length; i++) {
+    
+    Logger.log ('Parsing thread ' + i + ' van '+ threads.length );
+    var subject = threads[i].getFirstMessageSubject();
+    Logger.log (subject);
+ 
+//Portalmessage staat hierdoor uit!!!!!!!!!!!!!!!!!!!
+    //GroupMeMessage = createPortalAlertMsg(subject);
+    //post2Groupme(GroupMeMessage);                                     
+  //  Logger.log (GroupMeMessage);
+    
+    var message = threads[i].getMessages()[0]; // Get first message
+    Logger.log(message.getBody()); // Log contents of the body
+    var bodytext = message.getBody();
+    Logger.log ('bodytext:' + bodytext);
+    GroupMeMessage = createAgentAlertMsg(bodytext);
+    post2Groupme(GroupMeMessage);
+    Logger.log (GroupMeMessage);
+    
+    threads[i].removeLabel(label); //label weghalen zodat hij niet meer verwerkt wordt.
+  }
+  
+  Logger.log('processThreads done.');
+};//end function
+
+
+function createPortalAlertMsg(subject) {
+  Logger.log('processThreads: invoked wit parm:' +subject);
+  var portalName = subject.slice(0, subject.indexOf(":")); //slice(start,einde[,einde]) 
+  var msg = 'Portal ' + portalName + ' wordt aangevallen';
+  Logger.log('msg:'+msg );
+  Logger.log('createMsg done.');
+  return msg;
+};
+
+function createAgentAlertMsg(bodytext) {
+  Logger.log('processThreads: invoked wit parm:' +bodytext);
+
+  //even makkelijk: gebruik Parser library. Key is M1lugvAXKKtUxn_vdAG9JZleS6DrsjUUV  
+  var fromText = '/agents/';
+  var toText = '/';
+  var agentName = Parser
+                    .data(bodytext)
+                    .from(fromText)
+                    .to(toText)
+                    .build();
+  Logger.log('scraped: ' + agentName);
+  
+  //staat hij op de mutelist?
+  
+  var msg = agentName + ' is bezig';
+  
+  Logger.log('msg:'+msg );
+  Logger.log('createMsg done.');
+  
+  return msg;
+};
+
+function post2Groupme (strMsg) {
+  Logger.log('post2Groupme: invoked wit parm:' +strMsg);
+
+ // Make a POST request with a JSON payload.
+ var data = {
+   'text': strMsg,
+   'bot_id': botID
+ };
+ var options = {
+   'method' : 'post',
+   'contentType': 'application/json',
+   'payload' : JSON.stringify(data)
+ };
+  
+ var response = UrlFetchApp.fetch('https://api.groupme.com/v3/bots/post', options);
+  Logger.log('response='+ response.getContentText());
+  Logger.log('post2Groupme done.');
+  
+  //message opslaan voor mute functie
+  stamp(strMsg);
+  
+};//end function
+
+
+function verifyMsgNotMuted (strMsg) {
+// check of deze message gemute moet worden (ergo: bestaat in het bestand en nog niet expired is)
+// bestand is al opgeschoond dus als hij gevonden worden is het niet goed.
+  var ss = SpreadsheetApp.openById('xx').getSheets()[0];
+  var sheet=ss.getSheets()[0];
+  var selection=sheet.getDataRange();
+  var columns=selection.getNumColumns();
+  var rows=selection.getNumRows();
+  for (var row=rows; row > 1; row--) { 
+      var cell=selection.getCell(row,2);
+      waarde = cell.getValue();
+      Logger.log('row:'+row+' '+strMsg+' '+nu );
+        if (waarde == strMsg) {
+        return false;
+        Logger.log('returning false');
+        } else {
+        return true;
+        Logger.log('returning true')
+        }
+      }
+};//end function
+  
+
+function stamp(stampMsg) {
+  //vastleggen van laatste message
+  var ss = SpreadsheetApp.openById('xx').getSheets()[0];
+  
+  var d = new Date();
+  var tStamp = d.getTime();   // Number of ms since Jan 1, 1970
+  var timeStamp = tStamp /1000; // in seconden
+  var expirationTime = timeStamp + (60 * minExp); //message expired na 1 minuut 
+ 
+  ss.appendRow([stampMsg, expirationTime]);
+
+};//end function
+
+
+
+function cleanUpStamps (){
+  //functie om rows met expired messages te deleten.
+  
+  var d = new Date();
+  var nu = d.getTime()/1000;   // Number of ms since Jan 1, 1970 in seconden
+  
+  //van beneden naar boven loopen
+  var ss=SpreadsheetApp.openById('xx');
+  var sheet=ss.getSheets()[0];
+  var selection=sheet.getDataRange();
+  var columns=selection.getNumColumns();
+  var rows=selection.getNumRows();
+  for (var row=rows; row > 1; row--) { 
+      var cell=selection.getCell(row,2);
+      waarde = cell.getValue();
+      Logger.log('row:'+row+' '+waarde+' '+nu );
+      if (nu > waarde) { //indien expired
+        Logger.log('deleten');
+        ss.deleteRow(row);
+      }
+      }
+  
+};//end function
+  
