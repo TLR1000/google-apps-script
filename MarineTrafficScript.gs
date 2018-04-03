@@ -1,18 +1,9 @@
 //Dit script draait elke 30 min.
 //
 //Checkt voor relevante email en extract daaruit een twitter message 
-//Stuurt mail met twitter message naar xxx@gmail.com
+//Stuurt mail met twitter message naar xxxxxx@gmail.com
 //IFTTT pakt het vervolgens op en plaatst het als tweet in buffer
-//Buffer tweet het met het twitter account
-
-/*
-Zie voor fleet documentatie:
-https://docs.google.com/spreadsheets/d/xx/edit?usp=sharing
-
-Aantallen migranten
-http://data2.unhcr.org/en/situations/mediterranean
-
-*/
+//Buffer tweet het met het yyyyyy account
 
 function processMarineTrafficMail(){
     
@@ -66,28 +57,91 @@ function processMarineTrafficMail(){
         var portname = subject.substring(portnamestart, endsubjectstr).trim().toProperCase(); //trim omdat er nog een space blijft hangen voor de naam ivm. zoeken op Port ipv ;
 
 
-        //uitzonderingen
-        //
+      //------beweging------  
+      if (subject) {
+        if (subject.indexOf('Arrival') > -1) {
+          beweging = "aangekomen";
+          Logger.log('beweging:' + beweging);
+          var voorzetsel = 'in';    
+          continueprocessing = true;
+        }
+      }
+         
+      if (subject) {
+        if (subject.indexOf('Departure') > -1) {
+          beweging = "vertrokken";
+          Logger.log('beweging:' + beweging);     
+          var voorzetsel = 'uit';             
+          continueprocessing = true;
+        }
+      }
+      
+  
+      //
+      if (continueprocessing){
         
+        //------namen------  
+        var shipsname = subject.substring(shipsnamestart, commapos).toProperCase();
+        Logger.log('shipsname:' + shipsname);     
+        var portname = subject.substring(portnamestart, endsubjectstr).trim().toProperCase(); //trim omdat er nog een space blijft hangen voor de naam ivm. zoeken op Port ipv ;
+        Logger.log('portname:' + portname);     
+
+
+       //------correctie begin------  
         if (shipsname == "C Star") { 
           tweetmsgbegin = "SAR missie van #defendeurope:  ";
         }        
-        if (portname == "Malta Anch") { 
-          beweging = "voor anker ";
-          portname = "op de reede van Malta";
-        }
-        if (portname == "Trapani Anch") { 
-          beweging = "voor anker ";
-          portname = "op de reede van Trapani";
-        }
-        if (portname == "Lampedusa Anch") { 
-          beweging = "voor anker ";
-          portname = "op de reede van Lampedusa";
-        }
-        Logger.log(beweging);
-        Logger.log(portname);
         
-
+        //------correctie voorzetsel + portname------    
+        //Lampedusa
+        if (portname == "Lampedusa Anch") { 
+          if (beweging == "aangekomen") { 
+            beweging = "voor anker gegaan";
+            voorzetsel = 'op';
+          }
+         if (beweging == "vertrokken") { 
+            voorzetsel = 'van';
+          }
+          portname = "de reede van Lampedusa";
+        }        
+        //Trapani
+        if (portname == "Trapani Anch") { 
+          if (beweging == "aangekomen") { 
+            beweging = "voor anker gegaan";
+            voorzetsel = 'op';
+          }
+         if (beweging == "vertrokken") { 
+            voorzetsel = 'van';
+          }
+          portname = "de reede van Trapani";
+        }  
+        //Malta
+        if (portname == "Malta Anch") { 
+          if (beweging == "aangekomen") { 
+            beweging = "voor anker gegaan";
+            voorzetsel = 'op';
+          }
+         if (beweging == "vertrokken") { 
+            voorzetsel = 'van';
+          }
+          portname = "de reede van Malta";
+        }  
+        //Tanger
+        if (portname == "Tanger Med Anch") { 
+          if (beweging == "aangekomen") { 
+            beweging = "voor anker gegaan";
+            voorzetsel = 'op';
+          }
+         if (beweging == "vertrokken") { 
+            voorzetsel = 'van';
+          }
+          portname = "de reede van Tanger";
+        }          
+        //SAIPEM 12000
+        if (portname == "Saipem 12000") { 
+            voorzetsel = 'bij de';
+            tweetmsgbegin = ''; // geen mensensmokkelactiviteit 
+        }     
 
         
         //marinetraffic.com Link eruit peuteren
@@ -108,12 +162,12 @@ function processMarineTrafficMail(){
         //Logger.log ('Shortened URL is ' + url.id) ;
         
         //Tweet samenstellen
-        tweetmsg = tweetmsgbegin + ' ' + shipsname + ' ' + beweging + ' ' + portname + '. ' + url.id;
+        tweetmsg = tweetmsgbegin + ' ' + shipsname + ' ' + beweging + ' ' + voorzetsel + ' ' + portname + '. ' + url.id;
         Logger.log (tweetmsg);
         
         //tweet mailen
         try {
-          MailApp.sendEmail('xxx@gmail.com', '#mensensmokkel', tweetmsg);
+          MailApp.sendEmail('xxxxxx@gmail.com', '#mensensmokkel', tweetmsg);
         }  catch (err) {
           // handle the error here
         }
@@ -128,12 +182,11 @@ function processMarineTrafficMail(){
   }
 
 }
+}
 
 String.prototype.toProperCase = function () {
 //Function to return all words in a string capitalized
-/* 
-https://www.w3schools.com/jsref/jsref_obj_regexp.asp
-https://stackoverflow.com/questions/196972/convert-string-to-title-case-with-javascript/196991#196991
-*/
+
       return this.replace(/\b\w+/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
 };
+
