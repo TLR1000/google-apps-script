@@ -1,0 +1,17 @@
+function doGet(req) {
+  var aktieWaarde = req.parameter.aktie;
+  return response().json({
+    status: true,
+    message: 'jouw gevraagde aktie was '+aktieWaarde
+  });
+}
+
+function response() {
+  return {
+    json: function (data) {
+      return ContentService
+        .createTextOutput(JSON.stringify(data))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+}
